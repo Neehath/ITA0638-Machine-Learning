@@ -1,0 +1,80 @@
+import pandas as pd
+
+def read_csv(file_path):
+    return pd.read_csv(file_path)
+
+def initialize_boundaries(features):
+    # Initialize the most specific boundary (S)
+    S = ['0'] * len(features)
+    
+    # Initialize the most general boundary (G)
+    G = [['?' for _ in range(len(features))]]
+    
+    return S, G
+
+def more_general(h1, h2):
+    """ Return True if hypothesis h1 is more general than h2 """
+    return all(x == '?' or x == y for x, y in zip(h1, h2))
+
+def update_S(S, example):
+    for i, val in enumerate(example):
+        if S[i] == '0':
+            S[i] = val
+        elif S[i] != val:
+            S[i] = '?'
+    return S
+
+def update_G(G, S, example, features):
+    G_new = []
+    for g in G:
+        if not more_general(g, example):
+            for i in range(len(features)):
+                if g[i] == '?':
+                    for val in set(features[i]) - {example[i]}:
+                        g_new = g[:]
+                        g_new[i] = val
+                        if more_general(g_new, S):
+                            G_new.append(g_new)
+        else:
+            G_new.append(g)
+    return G_new
+
+def candidate_elimination_algorithm(training_data):
+    features = training_data.columns[:-1]
+    target = training_data.columns[-1]
+    
+    # Initialize the boundaries S and G
+    S, G = initialize_boundaries(features)
+    
+    # Iterate through each example in the training data
+    for i in range(len(training_data)):
+        example = training_data.iloc[i][:-1]
+        label = training_data.iloc[i][-1]
+        
+        if label == 'Yes':  # Positive example
+            if not more_general(S, example):
+                S = update_S(S, example)
+            G = [g for g in G if more_general(g, S)]
+        else:  # Negative example
+            G = update_G(G, S, example, features)
+    
+    return S, G
+
+def main():
+    # Path to the CSV file
+    file_path = 'training_data.csv'
+    
+    # Read the training data
+    training_data = read_csv(file_path)
+    
+    # Apply the Candidate-Elimination algorithm
+    S, G = candidate_elimination_algorithm(training_data)
+    
+    # Print the final hypotheses
+    print("The most specific boundary (S):")
+    print(S)
+    print("\nThe most general boundary (G):")
+    print(G)
+
+if __name__ == "__main__":
+    main()

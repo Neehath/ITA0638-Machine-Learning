@@ -1,0 +1,91 @@
+import pandas as pd
+import numpy as np
+from collections import Counter
+
+def entropy(data):
+    target = data.keys()[-1]
+    values = data[target].unique()
+    entropy = 0
+    for value in values:
+        fraction = data[target].value_counts()[value] / len(data[target])
+        entropy += -fraction * np.log2(fraction)
+    return entropy
+
+def attribute_entropy(data, attribute):
+    target = data.keys()[-1]
+    target_variables = data[target].unique()
+    variables = data[attribute].unique()
+    entropy2 = 0
+    for variable in variables:
+        entropy = 0
+        for target_variable in target_variables:
+            num = len(data[attribute][data[attribute] == variable][data[target] == target_variable])
+            den = len(data[attribute][data[attribute] == variable])
+            fraction = num / (den + np.finfo(float).eps)
+            entropy += -fraction * np.log2(fraction + np.finfo(float).eps)
+        fraction2 = den / float(len(data))
+        entropy2 += -fraction2 * entropy
+    return abs(entropy2)
+
+def best_attribute(data):
+    attributes = data.keys()[:-1]
+    information_gains = []
+    for attribute in attributes:
+        ig = entropy(data) - attribute_entropy(data, attribute)
+        information_gains.append(ig)
+    return attributes[np.argmax(information_gains)]
+
+def get_subtable(data, node, value):
+    return data[data[node] == value].reset_index(drop=True)
+
+def build_tree(data, tree=None):
+    target = data.keys()[-1]
+    node = best_attribute(data)
+    att_values = np.unique(data[node])
+    
+    if tree is None:
+        tree = {}
+        tree[node] = {}
+    
+    for value in att_values:
+        subtable = get_subtable(data, node, value)
+        clValue, counts = np.unique(subtable[target], return_counts=True)
+        
+        if len(counts) == 1:
+            tree[node][value] = clValue[0]
+        else:
+            tree[node][value] = build_tree(subtable)
+    
+    return tree
+
+def classify(tree, sample):
+    attribute = next(iter(tree))
+    if sample[attribute] in tree[attribute]:
+        result = tree[attribute][sample[attribute]]
+        if isinstance(result, dict):
+            return classify(result, sample)
+        else:
+            return result
+    else:
+        return None
+
+def main():
+    # Path to the CSV file
+    file_path = 'training_data.csv'
+    
+    # Read the training data
+    data = pd.read_csv(file_path)
+    
+    # Build the decision tree
+    decision_tree = build_tree(data)
+    print("Decision Tree:")
+    print(decision_tree)
+    
+    # Classify a new sample
+    sample = {'Outlook': 'Sunny', 'Temperature': 'Cool', 'Humidity': 'High', 'Windy': False}
+    print("\nClassify New Sample:")
+    print(f"Sample: {sample}")
+    print(f"Classification: {classify(decision_tree, sample)}")
+
+if __name__ == "__main__":
+    main()
