@@ -1,0 +1,41 @@
+import numpy as np
+import pandas as pd
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from collections import Counter
+
+# Load the Iris dataset
+iris = load_iris()
+X = iris.data
+y = iris.target
+
+# Split the dataset into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+def euclidean_distance(point1, point2):
+    return np.sqrt(np.sum((point1 - point2) ** 2))
+
+def knn_predict(X_train, y_train, X_test, k=3):
+    predictions = []
+    for test_point in X_test:
+        distances = []
+        for i in range(len(X_train)):
+            dist = euclidean_distance(test_point, X_train[i])
+            distances.append((dist, y_train[i]))
+        distances.sort(key=lambda x: x[0])
+        k_nearest_neighbors = distances[:k]
+        k_nearest_labels = [label for _, label in k_nearest_neighbors]
+        most_common = Counter(k_nearest_labels).most_common(1)[0][0]
+        predictions.append(most_common)
+    return np.array(predictions)
+
+def accuracy(y_true, y_pred):
+    return np.sum(y_true == y_pred) / len(y_true)
+
+# Predict on the test set
+k = 3
+y_pred = knn_predict(X_train, y_train, X_test, k)
+
+# Calculate accuracy
+acc = accuracy(y_test, y_pred)
+print(f"K-NN classification accuracy with k={k}: {acc * 100:.2f}%")
